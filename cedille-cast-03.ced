@@ -1,0 +1,91 @@
+module cedille-cast-03.
+
+-- β proves equality, but erases to a lambda term.
+
+test-refl1 ◂ { λ x. x ≃ λ x. x } = β.
+test-refl2 ◂ { λ x. x ≃ (λ x. x) (λ x. x) } = β.
+test-refl3 ◂ { λ x. x ≃ λ x. λ y. x y } = β.
+
+-- Won't terminate. CONTROVERSY
+-- test-omega ◂ { λ x. x ≃ (λ x. x x) (λ x. x x) } = β.
+
+test-trans ◂ ∀ A: ★. ∀ B: ★. ∀ C: ★. ∀ a: A. ∀ b: B. ∀ c: C.
+    {a ≃ b} ➔ {b ≃ c} ➔ {a ≃ c}
+  = Λ A. Λ B. Λ C. Λ a. Λ b. Λ c. λ eq1. λ eq2. ρ eq1 - eq2.
+
+test-sym ◂ ∀ A: ★. ∀ B: ★. ∀ a: A. ∀ b: B. {a ≃ b} ➔ {b ≃ a}
+  = Λ A. Λ B. Λ a. Λ b. λ eq. ς eq.
+
+test-sym' ◂ ∀ A: ★. ∀ B: ★. ∀ a: A. ∀ b: B. {a ≃ b} ➔ {b ≃ a}
+  = Λ A. Λ B. Λ a. Λ b. λ eq. ρ eq - β.
+
+Bool ◂ ★ = ∀ X: ★. X ➔ X ➔ X.
+true ◂ Bool = Λ X. λ then. λ else. then.
+flse ◂ Bool = Λ X. λ then. λ else. else.
+
+Empty ◂ ★ = ∀ X: ★. X.
+
+-- δ is like absurd in Idris
+test-absurd ◂ { true ≃ flse } ➔ Empty
+  = λ eq. δ Empty - eq.
+
+Cast ◂ ★ ➔ ★ ➔ ★
+  = λ A: ★. λ B: ★. ι f: A ➔ B. { f ≃ λ x. x }.
+
+-- import sigma.
+-- Cast' ◂ ★ ➔ ★ ➔ ★
+--   = λ A: ★. λ B: ★. Sigma ·(A ➔ B) ·(λ f: A ➔ B. {f ≃ λ x. x}).
+
+-- For all A and all B, give me an f from A to B, and gibe me a proof that f is equal to λx.x, and now I should be able to form a Cast from A to B.
+-- intrCast-fail ◂ ∀ A: ★. ∀ B: ★. Π f: A ➔ B. {f ≃ λ x. x} ➔ Cast ·A ·B
+--   = Λ A. Λ B. λ f. λ eq. [ f , ρ eq - β ].
+
+-- If A and B have been proven to be intensionally equal,
+
+-- ➾   \-
+phi ◂ ∀ A: ★. ∀ B: ★. Π a: A. ∀ b: B. {b ≃ a} ➾ B
+  = Λ A. Λ B. λ a. Λ b. Λ eq. φ eq - b {a}.
+
+intrCast ◂ ∀ A: ★. ∀ B: ★. Π f: A ➔ B. {f ≃ λ x. x} ➔ Cast ·A ·B
+  = Λ A. Λ B. λ f. λ eq. [ f , φ (ς eq) - (ρ eq - β) {f} ].
+
+intrCastExt ◂ ∀ A: ★. ∀ B: ★. Π f: A ➔ B. (Π a: A. {f a ≃ a}) ➔ Cast ·A ·B
+  = Λ A. Λ B. λ f. λ eqExt. [ λ x. φ (eqExt x) - (f x) {x} , β ].
+
+elimCast-fail ◂ ∀ A: ★. ∀ B: ★. A ➔ Cast ·A ·B ➔ B
+  = Λ A. Λ B. λ a. λ c. c.1 a.
+
+-- ➾ is for non-dependent implicit function types in Cedille
+elimCast ◂ ∀ A: ★. ∀ B: ★. A ➔ Cast ·A ·B ➾ B
+  = Λ A. Λ B. λ a. Λ c. φ (ρ c.2 - β) - (c.1 a) {a}.
+
+elimCast-id ◂ {elimCast ≃ λ x. x} = β.
+
+
+import nat.
+
+List ◂ ★ ➔ ★ = λ A: ★. ∀ X: ★. X ➔ (A ➔ X ➔ X) ➔ X.
+nil ◂ ∀ A: ★. List ·A = Λ A. Λ X. λ n. λ c. n.
+cons ◂ ∀ A: ★. A ➔ List ·A ➔ List ·A
+  = Λ A. λ a. λ xs. Λ X. λ n. λ c. c a (xs n c).
+
+Vec ◂ ★ ➔ Nat ➔ ★
+  = λ A: ★. λ n: Nat. ∀ X: Nat ➔ ★.
+    X zero ➔ (∀ n: Nat. A ➔ X n ➔ X (succ n)) ➔ X n.
+
+castVecList ◂ ∀ A: ★. ∀ n: Nat. Cast ·(Vec ·A n) ·(List ·A)
+  = Λ A. Λ n.
+    intrCastExt
+      (λ xs. Λ X. λ n. λ c. xs ·(λ _: Nat. X) n (Λ _. λ a. λ tl. c a tl))
+      (λ a. β).
+
+length ◂ ∀ A: ★. List ·A ➔ Nat
+  = Λ A. λ xs. xs zero (λ _. λ tl. succ tl).
+
+-- NOTE: Carrying around the length has extra runtime cost.
+-- vlength ◂ ∀ A: ★. Π n: Nat. Vec ·A n ➔ Nat
+--   = Λ A. λ n. λ _. n.
+vlength ◂ ∀ A: ★. ∀ n: Nat. Vec ·A n ➔ Nat
+  = Λ A. Λ n. λ xs. length (elimCast xs -(castVecList ·A -n)).
+
+length-vlength ◂ {length ≃ vlength} = β.

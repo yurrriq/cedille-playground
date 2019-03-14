@@ -1,0 +1,79 @@
+module cedille-cast-01.
+
+import sigma.
+
+{-
+  ◂    \f
+  ★    \s
+  ∀    \a
+  Π    \P
+  ➔    \r
+  ·    \.
+  ●    \h
+-}
+
+
+Nat ◂ ★ = ∀ X : ★. X ➔ (X ➔ X) ➔ X.
+zero ◂ Nat = Λ X. λ base. λ step. base .
+succ ◂ Nat ➔ Nat
+  = λ n. Λ X. λ base. λ step. step (n base step).
+
+one   = succ zero.
+two   = succ one.
+three = succ two.
+
+add ◂ Nat ➔ Nat ➔ Nat
+  = λ n. λ m. n m (λ x. succ x).
+
+ind-Nat ◂ ∀ P: Nat ➔ ★.
+	  P zero ➔ (Π m: Nat. P m ➔ P (succ m))
+	  ➔ Π n: Nat. P n
+  = Λ P. λ base. λ step. λ n.
+    [ pf ◂ (Sigma ·Nat ·(λ x: Nat. P x))
+      = n (mksigma zero base)
+	     (λ pf'. [ n' = proj1 pf']
+	       - mksigma (succ n') (step n' (proj2 pf')))
+    ]
+    - [ n' = proj1 pf ]
+    - proj2 pf.
+
+-- Lambda abstractions at the type level require an annotation, for now.
+iNat ◂ Nat ➔ ★
+  = λ n: Nat.
+      ∀ P: Nat ➔ ★.
+      P zero ➔ (Π m: Nat. P m ➔ P (succ m))
+      ➔ P n.
+
+-- Zero is inductive.
+-- izero ◂ iNat zero
+--   = Λ P. λ base. λ step. base.
+izero ◂ iNat zero
+  = Λ P. λ base. λ step.
+    [ pf ◂ (Sigma ·Nat ·(λ x: Nat. P x))
+      = zero (mksigma zero base)
+	     (λ pf'. [ n' = proj1 pf']
+	       - mksigma (succ n') (step n' (proj2 pf')))
+    ]
+    - [ zero' = proj1 pf ]
+    - proj2 pf.
+
+-- One is inductive.
+ione ◂ iNat one
+  -- = Λ P. λ base. λ step.
+  --     step zero base.
+  = Λ P. λ base. λ step.
+    [ pf ◂ (Sigma ·Nat ·(λ x: Nat. P x))
+      = one (mksigma zero base)
+	     (λ pf'. [ n' = proj1 pf']
+	       - mksigma (succ n') (step n' (proj2 pf')))
+    ]
+    - [ zero' = proj1 pf ]
+    - proj2 pf.
+
+itwo ◂ iNat two
+  = Λ P. λ base. λ step.
+      step one (step zero base).
+
+ithree ◂ iNat three
+  = Λ P. λ base. λ step.
+      step two (step one (step zero base)).
